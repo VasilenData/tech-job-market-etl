@@ -1,45 +1,54 @@
 # Tech Job Market ETL Pipeline
 
-Automated pipeline that collects daily tech hiring data from public APIs, stages it in a normalized PostgreSQL schema, and runs on a schedule with GitHub Actions.
+Automated daily pipeline that pulls tech job postings from two public APIs, validates and normalizes them, loads them idempotently into a **PostgreSQL** schema, and commits daily trend reports. Runs on a schedule with **GitHub Actions**.
 
-**Stack:** Python · Pandas · PostgreSQL · GitHub Actions
+**Stack:** Python · PostgreSQL · GitHub Actions · pytest
 
 ## The problem
-Hiring trends are scattered across job boards and change daily. A one-off scrape goes stale immediately, so the useful version is a pipeline that collects the data every day, keeps history, and never loads the same record twice.
+Hiring trends move daily and a one-off scrape goes stale. The useful version collects data every day, keeps history, never loads a record twice, and tells you when data is bad.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    A[Public job APIs] -->|requests| B[Python extract]
-    B -->|raw JSON| C[Pandas clean + validate]
-    C -->|idempotent upsert| D[(PostgreSQL<br/>normalized schema)]
-    E[GitHub Actions<br/>daily cron] -.triggers.-> B
-    D --> F[SQL analysis / BI]
+    A1[Arbeitnow API] --> B
+    A2[Remotive API] --> B[extract.py<br/>retries + backoff]
+    B --> C[transform.py<br/>normalize, validate, classify role,<br/>extract skills, de-duplicate]
+    C -->|rejects logged| L[(run log)]
+    C --> D[load.py<br/>idempotent UPSERT]
+    D --> E[(PostgreSQL<br/>companies, jobs, skills,<br/>job_skills, pipeline_runs)]
+    E --> F[reports.sql -> data/reports/*.csv<br/>+ data/history.csv]
+    G[GitHub Actions<br/>daily cron + Postgres service] -.-> B
 ```
 
-## Approach
-- **Extract:** Python pulls daily postings from public REST APIs.
-- **Transform:** Pandas cleans the JSON payloads, standardizes fields and drops invalid rows.
-- **Load:** data lands in a normalized PostgreSQL schema. Loads are idempotent, so reruns do not create duplicates.
-- **Orchestrate:** a GitHub Actions cron workflow runs the pipeline daily and logs errors.
+## Schema (normalized)
+`companies` 1-to-many `jobs` many-to-many `skills` (through `job_skills`), plus `pipeline_runs` as an audit log (rows fetched, valid, rejected, inserted, updated per run). See [`sql/schema.sql`](sql/schema.sql).
 
-## Results
-- Fully automated daily ingestion with no manual steps.
-- A queryable history of hiring trends in a normalized relational model.
+## Engineering details
+- **Idempotent loads:** `INSERT ... ON CONFLICT DO UPDATE` keyed on `source:id`. Running the pipeline twice back to back gave 875 jobs both times: 875 inserted on the first run, 0 inserted and 875 updated on the second.
+- **Validation and rejects:** records without id, title or company are rejected and logged, never loaded. Duplicates within a batch are collapsed.
+- **Role classification and skill extraction:** rule-based, unit tested. Word-boundary regexes avoid false hits (e.g. "Java" vs "JavaScript").
+- **Resilience:** HTTP retries with exponential backoff; one source failing does not stop the other; the run only fails if every source fails.
+- **Durable history:** CI databases are ephemeral, so each run appends to `data/history.csv` (active jobs per day and role family) and the workflow commits it. Point `DATABASE_URL` at a persistent Postgres to keep full job-level history instead.
+- **Tests:** 6 tests, including an integration test against a real PostgreSQL that proves reloading does not duplicate rows.
+
+## First run (real output, 29 Oct 2026)
+875 postings loaded (864 Arbeitnow, 11 Remotive). Arbeitnow is a general European job board, so most postings are non-data roles: 723 other, 87 software, 47 data science/ML, 9 data analytics, 9 data engineering. Most-requested skills in the 9 data engineering roles: SQL (7), Python (4), ETL (3). This is a small sample from one day; the value grows as daily history accumulates in `data/history.csv`.
 
 ## Run it
 ```bash
 git clone https://github.com/VasilenData/tech-job-market-etl.git
 cd tech-job-market-etl
-python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env          # set your PostgreSQL connection string
-python -m pipeline.run        # one full extract -> transform -> load cycle
+pytest -q
+python -m pipeline.run          # embedded local PostgreSQL, nothing to install
+# or use your own database:
+DATABASE_URL=postgresql://user:pw@localhost:5432/jobs python -m pipeline.run
 ```
+Reports land in `data/reports/` (daily postings, active roles by family, top skills for data engineering, top hiring companies).
 
-## Status
-Pipeline source code is being added to this repository. See also [HN Pulse](https://github.com/VasilenData/hn-pulse), a complete orchestrated project with dbt tests and a live dashboard.
+## Data sources and terms
+[Arbeitnow job board API](https://www.arbeitnow.com/blog/job-board-api) and [Remotive API](https://remotive.com/api/remote-jobs). Both are free; link back to the sources if you reuse the data and keep request volume low (this pipeline makes about 6 calls a day).
 
 ---
 Built by [Vasilen Kanchev](https://vasilendata.github.io) · [LinkedIn](https://www.linkedin.com/in/vasilenkanchev/)
