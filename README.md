@@ -42,4 +42,4 @@ python -m pipeline.run        # one full extract -> transform -> load cycle
 Pipeline source code is being added to this repository. See also [HN Pulse](https://github.com/VasilenData/hn-pulse), a complete orchestrated project with dbt tests and a live dashboard.
 
 ---
-Built by [Vasilen Kanchev](https://vasilendata.github.io) · [LinkedIn](https://www.linkedin.com/in/vasilen-kanchev-030878290/)
+Built by [Vasilen Kanchev](https://vasilendata.github.io) · [LinkedIn](https://www.linkedin.com/in/vasilenkanchev/)
