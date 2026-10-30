@@ -1,16 +1,16 @@
 skill,jobs
 SQL,6
 Python,5
-Airflow,4
-ETL,3
-Azure,3
-Docker,2
-GCP,2
+Airflow,3
+dbt,2
+ETL,2
+Terraform,2
+Azure,2
+BigQuery,2
 Power BI,2
 Snowflake,2
-Terraform,2
-AWS,2
-BigQuery,2
-Databricks,2
-dbt,2
-Spark,1
+PostgreSQL,1
+Tableau,1
+Docker,1
+AWS,1
+Databricks,1
