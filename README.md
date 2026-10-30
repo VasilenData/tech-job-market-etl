@@ -1,5 +1,7 @@
 # Tech Job Market ETL Pipeline
 
+[![ci](https://github.com/VasilenData/tech-job-market-etl/actions/workflows/daily.yml/badge.svg)](https://github.com/VasilenData/tech-job-market-etl/actions/workflows/daily.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) ![Python 3.11](https://img.shields.io/badge/python-3.11-3670A0.svg)
+
 Automated daily pipeline that pulls tech job postings from two public APIs, validates and normalizes them, loads them idempotently into a **PostgreSQL** schema, and commits daily trend reports. Runs on a schedule with **GitHub Actions**.
 
 **Stack:** Python · PostgreSQL · GitHub Actions · pytest
