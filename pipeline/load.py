@@ -1,8 +1,6 @@
 """Idempotent load into PostgreSQL: re-running never duplicates rows, it updates last_seen_on."""
 from datetime import date
 
-import psycopg2
-import psycopg2.extras
 
 UPSERT_JOB = """
 INSERT INTO jobs (job_id, source, title, company_id, location, is_remote, job_type, role_family, url, posted_at, first_seen_on, last_seen_on)
