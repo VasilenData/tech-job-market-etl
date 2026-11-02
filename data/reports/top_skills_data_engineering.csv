@@ -1,16 +1,16 @@
 skill,jobs
-SQL,8
-AWS,7
-Python,7
-Kafka,4
-Databricks,4
-Airflow,4
+Python,8
+SQL,7
+AWS,5
 Redshift,4
+Airflow,4
 Scala,4
-Spark,3
-dbt,2
-Azure,2
-Power BI,1
-ETL,1
-GCP,1
-Snowflake,1
+Kafka,3
+Snowflake,3
+dbt,3
+Databricks,3
+Power BI,2
+ETL,2
+Spark,2
+Terraform,1
+BigQuery,1
