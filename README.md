@@ -32,7 +32,7 @@ flowchart LR
 - **Current posting state:** an existing posting updates its company and publication date, and its skill links are replaced by the latest skill set in the same transaction. Removed skills do not remain in current reports.
 - **Role classification and skill extraction:** rule-based, unit tested. Word-boundary regexes avoid false hits (e.g. "Java" vs "JavaScript").
 - **Resilience:** HTTP retries with exponential backoff; one source failing does not stop the other; the run only fails if every source fails.
-- **Durable history:** CI databases are ephemeral, so each run appends to `data/history.csv` (active jobs per day and role family) and the workflow commits it. Point `DATABASE_URL` at a persistent Postgres to keep full job-level history instead.
+- **Durable history:** CI databases are ephemeral, so each run appends to `data/history.csv` (active jobs per day and role family) and the workflow commits it. Point `DATABASE_URL` at a persistent Postgres to retain job records and their first/last-seen dates across runs. Updates replace the current posting fields and skills; the schema does not retain every previous version.
 - **Tests:** parsing/API failure regressions plus real PostgreSQL integration tests for idempotence, changed fields, removed skills and rollback. `TEST_DATABASE_URL` uses an isolated test schema; otherwise tests start embedded PostgreSQL. Pull requests run tests without extracting or publishing live data.
 
 ## First run (real output, 29 Oct 2026)
