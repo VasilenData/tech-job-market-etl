@@ -42,8 +42,17 @@ jobs:
       - name: Unit + integration tests
         run: pytest -q
       - name: Extract, transform, load
+        id: extract
         if: github.event_name != 'pull_request'
         run: python -m pipeline.run
+      - name: Preserve source completeness diagnostics
+        if: always() && steps.extract.outcome != 'skipped' && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: job-source-status-${{ github.run_id }}-${{ github.run_attempt }}
+          path: data/run_status.json
+          if-no-files-found: ignore
+          retention-days: 30
       - name: Commit reports and history
         if: github.event_name != 'pull_request'
         run: |
