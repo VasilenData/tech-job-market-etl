@@ -6,8 +6,10 @@ UPSERT_JOB = """
 INSERT INTO jobs (job_id, source, title, company_id, location, is_remote, job_type, role_family, url, posted_at, first_seen_on, last_seen_on)
 VALUES (%(job_id)s, %(source)s, %(title)s, %(company_id)s, %(location)s, %(is_remote)s, %(job_type)s, %(role_family)s, %(url)s, %(posted_at)s, %(today)s, %(today)s)
 ON CONFLICT (job_id) DO UPDATE SET
-    title = EXCLUDED.title, location = EXCLUDED.location, is_remote = EXCLUDED.is_remote, job_type = EXCLUDED.job_type,
-    role_family = EXCLUDED.role_family, url = EXCLUDED.url, last_seen_on = EXCLUDED.last_seen_on
+    title = EXCLUDED.title, company_id = EXCLUDED.company_id, location = EXCLUDED.location,
+    is_remote = EXCLUDED.is_remote, job_type = EXCLUDED.job_type,
+    role_family = EXCLUDED.role_family, url = EXCLUDED.url, posted_at = EXCLUDED.posted_at,
+    last_seen_on = EXCLUDED.last_seen_on
 RETURNING (xmax = 0) AS inserted;
 """
 
@@ -22,6 +24,9 @@ def load(conn, jobs: list[dict], source: str, fetched: int, rejected: int, today
             cur.execute(UPSERT_JOB, {**j, "company_id": company_id, "today": today})
             if cur.fetchone()[0]: inserted += 1
             else: updated += 1
+            # Skills describe the latest posting, not every skill it ever mentioned.
+            # Replacement shares the job transaction, so a failed load rolls back both.
+            cur.execute("DELETE FROM job_skills WHERE job_id = %s", (j["job_id"],))
             for skill in j["skills"]:
                 cur.execute("INSERT INTO skills (name) VALUES (%s) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING skill_id", (skill,))
                 cur.execute("INSERT INTO job_skills (job_id, skill_id) VALUES (%s, %s) ON CONFLICT DO NOTHING", (j["job_id"], cur.fetchone()[0]))

@@ -42,7 +42,10 @@ def _iso(ts) -> str | None:
         return None
     if isinstance(ts, (int, float)):
         return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
-    return datetime.fromisoformat(str(ts).replace("Z", "+00:00")).isoformat()
+    parsed = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc).isoformat()
 
 
 def normalize_arbeitnow(raw: dict) -> dict:
@@ -66,7 +69,8 @@ def normalize_remotive(raw: dict) -> dict:
 
 def validate(job: dict) -> tuple[bool, str]:
     """Reject records that would break the schema or pollute the data. Returns (ok, reason)."""
-    if not job["job_id"].split(":", 1)[1] or job["job_id"].endswith(":None"):
+    source, separator, identifier = str(job.get("job_id", "")).partition(":")
+    if not source or not separator or not identifier.strip() or identifier == "None":
         return False, "missing id"
     if not job["title"]:
         return False, "missing title"
@@ -86,3 +90,16 @@ def clean(jobs: list[dict]) -> tuple[list[dict], list[tuple[str, str]]]:
         seen[j["job_id"]] = j
     good = list(seen.values())
     return good, rejects
+
+
+def normalize_batch(records: list, normalizer) -> tuple[list[dict], list[tuple[str, str]]]:
+    """Keep valid source rows when a single record has a malformed date or shape."""
+    normalized, malformed = [], []
+    for record in records:
+        try:
+            normalized.append(normalizer(record))
+        except (ValueError, TypeError, AttributeError, OverflowError) as error:
+            identifier = str(record.get("id", record.get("slug", "?"))) if isinstance(record, dict) else "?"
+            malformed.append((identifier, f"normalization failed: {type(error).__name__}"))
+    jobs, rejected = clean(normalized)
+    return jobs, malformed + rejected

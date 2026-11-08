@@ -65,7 +65,9 @@ def main() -> int:
     for name, fetch, norm in sources:
         try:
             raw = fetch()
-            jobs, rejects = transform.clean([norm(r) for r in raw])
+            jobs, rejects = transform.normalize_batch(raw, norm)
+            if not jobs:
+                raise ValueError("Source returned no valid postings")
             for jid, why in rejects[:20]:
                 log.warning("rejected %s: %s", jid, why)
             stats = load.load(conn, jobs, name, len(raw), len(rejects))
