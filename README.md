@@ -28,11 +28,12 @@ flowchart LR
 
 ## Engineering details
 - **Idempotent loads:** `INSERT ... ON CONFLICT DO UPDATE` keyed on `source:id`. Running the pipeline twice back to back gave 875 jobs both times: 875 inserted on the first run, 0 inserted and 875 updated on the second.
-- **Validation and rejects:** records without id, title or company are rejected and logged, never loaded. Duplicates within a batch are collapsed.
+- **Validation and rejects:** records without id, title or company are rejected and logged, never loaded. Malformed dates or record shapes reject only the affected row; missing API list fields fail that source. Duplicates within a batch are collapsed. Timezone-free source dates are interpreted as UTC.
+- **Current posting state:** an existing posting updates its company and publication date, and its skill links are replaced by the latest skill set in the same transaction. Removed skills do not remain in current reports.
 - **Role classification and skill extraction:** rule-based, unit tested. Word-boundary regexes avoid false hits (e.g. "Java" vs "JavaScript").
 - **Resilience:** HTTP retries with exponential backoff; one source failing does not stop the other; the run only fails if every source fails.
 - **Durable history:** CI databases are ephemeral, so each run appends to `data/history.csv` (active jobs per day and role family) and the workflow commits it. Point `DATABASE_URL` at a persistent Postgres to keep full job-level history instead.
-- **Tests:** 6 tests, including an integration test against a real PostgreSQL that proves reloading does not duplicate rows.
+- **Tests:** parsing/API failure regressions plus real PostgreSQL integration tests for idempotence, changed fields, removed skills and rollback. `TEST_DATABASE_URL` uses an isolated test schema; otherwise tests start embedded PostgreSQL. Pull requests run tests without extracting or publishing live data.
 
 ## First run (real output, 29 Oct 2026)
 875 postings loaded (864 Arbeitnow, 11 Remotive). Arbeitnow is a general European job board, so most postings are non-data roles: 723 other, 87 software, 47 data science/ML, 9 data analytics, 9 data engineering. Most-requested skills in the 9 data engineering roles: SQL (7), Python (4), ETL (3). This is a small sample from one day; the value grows as daily history accumulates in `data/history.csv`.

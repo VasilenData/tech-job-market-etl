@@ -1,4 +1,5 @@
 from pipeline.transform import classify_role, clean, extract_skills, normalize_arbeitnow, normalize_remotive, strip_html
+from pipeline.transform import normalize_batch
 
 
 def test_classify_role():
@@ -39,3 +40,17 @@ def test_clean_rejects_bad_rows_and_dedupes():
     good, rejects = clean(rows)
     assert [g["title"] for g in good] == ["Data Engineer v2"]
     assert len(rejects) == 3 and good[0]["role_family"] == "data_engineering"
+
+
+def test_bad_timestamp_or_shape_rejects_only_the_affected_row():
+    base = {"id": 1, "title": "Data Engineer", "company_name": "Acme", "publication_date": "2026-01-02T12:30:00"}
+    rows = [base, dict(base, id=2, publication_date="not-a-date"), None, dict(base, id=3, title="")]
+    jobs, rejects = normalize_batch(rows, normalize_remotive)
+    assert [job["job_id"] for job in jobs] == ["remotive:1"]
+    assert jobs[0]["posted_at"] == "2026-01-02T12:30:00+00:00"
+    assert len(rejects) == 3
+
+
+def test_clean_rejects_malformed_identifier_without_crashing():
+    job = {"job_id": "missing-separator", "title": "Analyst", "company": "Acme"}
+    assert clean([job]) == ([], [("missing-separator", "missing id")])
