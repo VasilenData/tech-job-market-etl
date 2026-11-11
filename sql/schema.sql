@@ -15,8 +15,12 @@ CREATE TABLE IF NOT EXISTS jobs (
     url           TEXT,
     posted_at     TIMESTAMPTZ,
     first_seen_on DATE NOT NULL,
-    last_seen_on  DATE NOT NULL
+    last_seen_on  DATE NOT NULL,
+    in_latest_sample BOOLEAN NOT NULL DEFAULT FALSE
 );
+-- Existing persistent databases start with unknown membership, never inferred active.
+-- A successful source load repopulates this flag before reports are published.
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS in_latest_sample BOOLEAN NOT NULL DEFAULT FALSE;
 CREATE TABLE IF NOT EXISTS skills (
     skill_id SERIAL PRIMARY KEY,
     name     TEXT NOT NULL UNIQUE
