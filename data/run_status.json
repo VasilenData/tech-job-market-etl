@@ -1,24 +1,24 @@
 {
-  "started_at": "2026-11-11T14:29:47.187775+00:00",
+  "started_at": "2026-11-11T16:06:26.066963+00:00",
   "day": "2026-11-11",
   "publication": "complete",
   "sources": {
     "arbeitnow": {
       "status": "loaded",
       "fetched": 900,
-      "valid": 874,
+      "valid": 900,
       "rejected": 0,
-      "inserted": 874,
+      "inserted": 900,
       "updated": 0
     },
     "remotive": {
       "status": "loaded",
-      "fetched": 39,
-      "valid": 13,
+      "fetched": 42,
+      "valid": 14,
       "rejected": 0,
-      "inserted": 13,
+      "inserted": 14,
       "updated": 0
     }
   },
-  "finished_at": "2026-11-11T14:29:50.329560+00:00"
+  "finished_at": "2026-11-11T16:06:29.105057+00:00"
 }
