@@ -73,3 +73,57 @@ def test_failed_reload_rolls_back_job_and_skill_replacement(conn):
         assert cur.fetchone()[0] == JOB["title"]
         cur.execute("select s.name from job_skills js join skills s using(skill_id) order by s.name")
         assert cur.fetchall() == [("Python",), ("SQL",)]
+
+
+
+def test_same_day_refresh_replaces_membership_and_keeps_other_sources(conn):
+    today = date(2026, 11, 11)
+    second = dict(JOB, job_id="t:2")
+    other = dict(JOB, job_id="other:1", source="other")
+    load.load(conn, [JOB, second], "t", 2, 0, today=today)
+    load.load(conn, [other], "other", 1, 0, today=today)
+    load.load(conn, [second], "t", 1, 0, today=today)
+    with conn.cursor() as cur:
+        cur.execute("select job_id,in_latest_sample,last_seen_on from jobs order by job_id")
+        assert cur.fetchall() == [("other:1", True, today), ("t:1", False, today), ("t:2", True, today)]
+        cur.execute("select count(*) from jobs where in_latest_sample and last_seen_on=%s", (today,))
+        assert cur.fetchone()[0] == 2
+    load.load(conn, [JOB], "t", 1, 0, today=today)
+    with conn.cursor() as cur:
+        cur.execute("select first_seen_on,in_latest_sample from jobs where job_id='t:1'")
+        assert cur.fetchone() == (today, True)
+
+
+def test_failed_refresh_restores_previous_membership(conn):
+    load.load(conn, [JOB, dict(JOB, job_id="t:2")], "t", 2, 0)
+    with pytest.raises(psycopg2.Error):
+        load.load(conn, [dict(JOB, skills=[None])], "t", 1, 0)
+    conn.rollback()
+    with conn.cursor() as cur:
+        cur.execute("select count(*) from jobs where in_latest_sample")
+        assert cur.fetchone()[0] == 2
+
+
+@pytest.mark.parametrize("jobs", [[], [dict(JOB, source="wrong")]])
+def test_invalid_snapshot_cannot_clear_existing_membership(conn, jobs):
+    load.load(conn, [JOB], "t", 1, 0)
+    with pytest.raises(ValueError, match="nonempty"):
+        load.load(conn, jobs, "t", len(jobs), 0)
+    with conn.cursor() as cur:
+        cur.execute("select in_latest_sample from jobs")
+        assert cur.fetchone()[0] is True
+
+
+def test_schema_upgrade_never_assumes_historical_rows_are_current(conn):
+    load.load(conn, [JOB], "t", 1, 0)
+    with conn.cursor() as cur:
+        cur.execute("ALTER TABLE jobs DROP COLUMN in_latest_sample")
+        with open(os.path.join(ROOT, "sql/schema.sql"), encoding="utf-8") as stream:
+            cur.execute(stream.read())
+        cur.execute("select in_latest_sample from jobs")
+        assert cur.fetchone()[0] is False
+    conn.commit()
+    load.load(conn, [JOB], "t", 1, 0)
+    with conn.cursor() as cur:
+        cur.execute("select in_latest_sample from jobs")
+        assert cur.fetchone()[0] is True

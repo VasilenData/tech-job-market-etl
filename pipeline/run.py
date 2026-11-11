@@ -67,7 +67,7 @@ def append_history(conn, path: str, today=None) -> None:
             existing = [r for r in csv.reader(fh)][1:]
     existing = [r for r in existing if r[0] != today]  # re-running the same day replaces that day
     with conn.cursor() as cur:
-        cur.execute("SELECT role_family, COUNT(*), SUM(is_remote::int) FROM jobs WHERE last_seen_on = %s GROUP BY 1 ORDER BY 1", (today,))
+        cur.execute("SELECT role_family, COUNT(*), SUM(is_remote::int) FROM jobs WHERE in_latest_sample AND last_seen_on = %s GROUP BY 1 ORDER BY 1", (today,))
         new = [[today, fam, n, rem] for fam, n, rem in cur.fetchall()]
     def write(fh):
         w = csv.writer(fh); w.writerow(["day", "role_family", "active_jobs", "remote_jobs"]); w.writerows(existing + new)
