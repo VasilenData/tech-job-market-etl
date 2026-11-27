@@ -1,6 +1,6 @@
 {
-  "started_at": "2026-11-26T17:00:04.160878+00:00",
-  "day": "2026-11-26",
+  "started_at": "2026-11-27T16:45:42.174833+00:00",
+  "day": "2026-11-27",
   "publication": "complete",
   "sources": {
     "arbeitnow": {
@@ -13,12 +13,12 @@
     },
     "remotive": {
       "status": "loaded",
-      "fetched": 48,
-      "valid": 16,
+      "fetched": 51,
+      "valid": 17,
       "rejected": 0,
-      "inserted": 16,
+      "inserted": 17,
       "updated": 0
     }
   },
-  "finished_at": "2026-11-26T17:00:07.425357+00:00"
+  "finished_at": "2026-11-27T16:45:44.570007+00:00"
 }
